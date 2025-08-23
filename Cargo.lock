@@ -1877,7 +1877,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "duckdb_nn"
+name = "duckdb_ml"
 version = "0.1.0"
 dependencies = [
  "burn",
