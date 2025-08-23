@@ -122,7 +122,7 @@ pub fn train_reg<B: AutodiffBackend>(
 
 #[cfg(test)]
 mod tests {
-    use super::super::{Model, NetworkSpec};
+    use super::super::model::NetworkSpec;
     use super::*;
     use burn::{
         backend::{Autodiff, NdArray},
