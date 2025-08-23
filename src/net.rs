@@ -4,7 +4,6 @@ use burn::{
 };
 use serde::Deserialize;
 
-
 /// One layer specification
 #[derive(Deserialize, Debug)]
 struct LayerSpec {
