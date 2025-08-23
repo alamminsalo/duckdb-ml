@@ -1,5 +1,7 @@
-use crate::batcher::{TensorBatch, TensorBatcher, XYValue};
-use crate::net::Net;
+use super::{
+    batcher::{TensorBatch, TensorBatcher, XYValue},
+    model::Model,
+};
 use burn::data::dataloader::batcher::Batcher;
 use burn::nn::loss::{MseLoss, Reduction};
 use burn::optim::{GradientsParams, Optimizer};
@@ -35,14 +37,14 @@ fn create_artifact_dir(artifact_dir: &str) {
 
 /// Train an existing model with provided datasets
 pub fn train_reg<B: AutodiffBackend>(
-    mut model: Net<B>,
+    mut model: Model<B>,
     train_set: Vec<XYValue>,
     test_set: Vec<XYValue>,
     config: TrainingConfig,
-    mut optimizer: impl Optimizer<Net<B>, B>,
+    mut optimizer: impl Optimizer<Model<B>, B>,
     artifact_dir: &str,
     device: &B::Device,
-) -> Net<B> {
+) -> Model<B> {
     create_artifact_dir(artifact_dir);
 
     // Save config for reproducibility
@@ -120,9 +122,8 @@ pub fn train_reg<B: AutodiffBackend>(
 
 #[cfg(test)]
 mod tests {
+    use super::super::{Model, NetworkSpec};
     use super::*;
-    use crate::batcher::XYValue;
-    use crate::net::{Net, NetworkSpec};
     use burn::{
         backend::{Autodiff, NdArray},
         optim::AdamConfig,
@@ -182,7 +183,7 @@ mod tests {
 
         // Parse the JSON into NetworkSpec
         let spec: NetworkSpec = serde_json::from_str(json).unwrap();
-        let model = Net::<B>::from_spec(spec, &device);
+        let model = Model::<B>::from_spec(spec, &device);
 
         // Example input vec
         let train_set = vec![XYValue(vec![0., 0., 0., 0.], vec![0.])];
@@ -227,7 +228,7 @@ mod tests {
 
         // Parse the JSON into NetworkSpec
         let spec: NetworkSpec = serde_json::from_str(json).unwrap();
-        let model = Net::<B>::from_spec(spec, &device);
+        let model = Model::<B>::from_spec(spec, &device);
 
         // Example input vec
         let (features, targets) = load_csv("test/auto_mpg.csv").unwrap();

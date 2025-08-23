@@ -16,21 +16,21 @@ pub struct LayerSpec {
     dropout: Option<f64>,       // default = 0.0
 }
 
-/// Network specification
+/// Modelwork specification
 #[derive(Deserialize, Debug)]
 pub struct NetworkSpec {
     layers: Vec<LayerSpec>,
 }
 
 #[derive(Module, Debug)]
-pub struct Net<B: Backend> {
+pub struct Model<B: Backend> {
     linears: Vec<Linear<B>>,
     batch_norms: Vec<Option<BatchNorm<B, 0>>>,
     dropouts: Vec<Option<Dropout>>,
     activations: Vec<Option<String>>,
 }
 
-impl<B: Backend> Net<B> {
+impl<B: Backend> Model<B> {
     /// Build a model from JSON spec
     pub fn from_spec(spec: NetworkSpec, device: &B::Device) -> Self {
         let mut linears = Vec::new();
@@ -126,7 +126,7 @@ mod tests {
 
         // Create device and build model
         let device = Default::default();
-        let model = Net::<B>::from_spec(spec, &device);
+        let model = Model::<B>::from_spec(spec, &device);
 
         // Example input: batch_size=2, features=4
         let input =
@@ -154,7 +154,7 @@ mod tests {
 
         let spec: NetworkSpec = serde_json::from_str(json).unwrap();
         let device = Default::default();
-        let model = Net::<B>::from_spec(spec, &device);
+        let model = Model::<B>::from_spec(spec, &device);
 
         let input = Tensor::<B, 2>::from_floats([[1.0, 2.0, 3.0]], &device);
         let output = model.forward(input);

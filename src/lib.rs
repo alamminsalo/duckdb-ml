@@ -1,6 +1,4 @@
-mod batcher;
-mod net;
-mod train;
+mod nn;
 
 use duckdb::ffi::{duckdb_string_t, duckdb_string_t_data, duckdb_string_t_length};
 use duckdb::{
