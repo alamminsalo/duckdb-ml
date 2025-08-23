@@ -4,15 +4,15 @@ mod train;
 
 use duckdb::ffi::{duckdb_string_t, duckdb_string_t_data, duckdb_string_t_length};
 use duckdb::{
-    core::{DataChunkHandle, Inserter, LogicalTypeHandle, LogicalTypeId},
+    core::{DataChunkHandle, Inserter, LogicalTypeId},
     vscalar::{ScalarFunctionSignature, VScalar},
-    vtab::{arrow::WritableVector, BindInfo, InitInfo, TableFunctionInfo, VTab},
+    vtab::arrow::WritableVector,
     Connection,
 };
 use duckdb_loadable_macros::duckdb_entrypoint_c_api;
 use libduckdb_sys as ffi;
 use std::error::Error;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::AtomicBool;
 
 //type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 

@@ -1,13 +1,9 @@
 use burn::{
     nn::{BatchNorm, BatchNormConfig, Dropout, DropoutConfig, Linear, LinearConfig, Relu, Tanh},
-    optim::{Adam, AdamConfig, Optimizer, Sgd, SgdConfig},
     prelude::*,
-    tensor::backend::AutodiffBackend,
-    train::{RegressionOutput, TrainOutput, TrainStep, ValidStep},
 };
 use serde::Deserialize;
 
-use crate::batcher::TensorBatch;
 
 /// One layer specification
 #[derive(Deserialize, Debug)]

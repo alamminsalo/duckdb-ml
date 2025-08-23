@@ -2,7 +2,7 @@ use crate::batcher::{TensorBatch, TensorBatcher, XYValue};
 use crate::net::Net;
 use burn::data::dataloader::batcher::Batcher;
 use burn::data::dataloader::Dataset;
-use burn::nn::loss::{CrossEntropyLoss, MseLoss, Reduction};
+use burn::nn::loss::{MseLoss, Reduction};
 use burn::optim::{GradientsParams, Optimizer};
 use burn::tensor::backend::AutodiffBackend;
 use burn::{
@@ -12,14 +12,7 @@ use burn::{
         dataset::InMemDataset,
     },
     module::AutodiffModule,
-    optim::AdamConfig,
-    prelude::*,
-    record::CompactRecorder,
-    tensor::{backend::Backend, Tensor},
-    train::{
-        metric::{AccuracyMetric, LossMetric},
-        LearnerBuilder,
-    },
+    tensor::backend::Backend,
 };
 use std::sync::Arc;
 
