@@ -1,5 +1,5 @@
 [package]
-name = "duckdb_ml"
+name = "ml"
 version = "0.1.0"
 edition = "2021"
 

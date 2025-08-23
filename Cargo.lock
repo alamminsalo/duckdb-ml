@@ -1877,20 +1877,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "duckdb_ml"
-version = "0.1.0"
-dependencies = [
- "burn",
- "csv",
- "duckdb",
- "duckdb-loadable-macros",
- "libduckdb-sys",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
 name = "dyn-stack"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3535,6 +3521,20 @@ dependencies = [
  "log",
  "wasi 0.11.1+wasi-snapshot-preview1",
  "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "ml"
+version = "0.1.0"
+dependencies = [
+ "burn",
+ "csv",
+ "duckdb",
+ "duckdb-loadable-macros",
+ "libduckdb-sys",
+ "serde",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]
