@@ -1,0 +1,18 @@
+{
+  "layers": [{
+    "input_dim": 4,
+    "output_dim": 3,
+    "activation": "relu"
+  },
+  {
+    "input_dim": 4,
+    "activation": "relu",
+    "output_dim": 3
+  }
+  ],
+  "training": {
+    "optimizer": "adam",
+    "lr": 0.001,
+    "epochs": 10
+  }
+}
