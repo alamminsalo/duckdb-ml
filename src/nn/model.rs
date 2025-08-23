@@ -4,7 +4,6 @@ use burn::{
     record::{FullPrecisionSettings, NamedMpkFileRecorder, Recorder},
 };
 use serde::Deserialize;
-use serde_json;
 use std::path::PathBuf;
 
 /// One layer specification
