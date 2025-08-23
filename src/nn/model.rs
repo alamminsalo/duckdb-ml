@@ -1,8 +1,11 @@
 use burn::{
     nn::{BatchNorm, BatchNormConfig, Dropout, DropoutConfig, Linear, LinearConfig, Relu, Tanh},
     prelude::*,
+    record::{FullPrecisionSettings, NamedMpkFileRecorder, Recorder},
 };
 use serde::Deserialize;
+use serde_json;
+use std::path::PathBuf;
 
 /// One layer specification
 #[derive(Deserialize, Debug)]
@@ -31,6 +34,22 @@ pub struct Model<B: Backend> {
 }
 
 impl<B: Backend> Model<B> {
+    pub fn save_weights(&self, path: &PathBuf) {
+        self.clone()
+            .save_file(path, &NamedMpkFileRecorder::<FullPrecisionSettings>::new())
+            .expect("Should be able to save the model");
+    }
+
+    pub fn load_weights(self, path: &PathBuf, device: &B::Device) -> Self {
+        // Load model record on the backend's default device
+        let record: ModelRecord<B> = NamedMpkFileRecorder::<FullPrecisionSettings>::new()
+            .load(path.clone(), device)
+            .expect("Should be able to load the model weights from the provided file");
+
+        // Initialize a new model with the loaded record/weights
+        self.load_record(record)
+    }
+
     /// Build a model from JSON spec
     pub fn from_spec(spec: NetworkSpec, device: &B::Device) -> Self {
         let mut linears = Vec::new();
@@ -162,5 +181,32 @@ mod tests {
 
         assert_eq!(data.shape[0], 1, "Batch size should be 1");
         assert_eq!(data.shape[1], 3, "Output feature size should be 3");
+    }
+
+    #[test]
+    fn test_model_save_load_weights() {
+        // Create model spec and build model
+        let json = r#"
+            {
+                "layers": [
+                    { "in": 4, "out": 8, "activation": "relu", "batch_norm": true, "dropout": 0.1 },
+                    { "in": 8, "out": 3, "activation": "tanh" }
+                ]
+            }
+            "#;
+
+        let spec: NetworkSpec = serde_json::from_str(json).unwrap();
+        let device = Default::default();
+        let model = Model::<B>::from_spec(spec, &device);
+
+        // Create a temporary file path to save the weights
+        let tmp = tempfile::tempdir().unwrap();
+        let weights_path = tmp.path().join("weights.mpk");
+
+        // Save model weights
+        model.save_weights(&weights_path);
+
+        // Load model weights from the file
+        model.load_weights(&weights_path, &device);
     }
 }

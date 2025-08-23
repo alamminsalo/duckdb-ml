@@ -12,8 +12,6 @@ use libduckdb_sys as ffi;
 use std::error::Error;
 use std::sync::atomic::AtomicBool;
 
-//type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
-
 #[repr(C)]
 struct HelloBindData {
     name: String,
