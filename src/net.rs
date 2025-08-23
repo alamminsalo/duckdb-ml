@@ -6,7 +6,7 @@ use serde::Deserialize;
 
 /// One layer specification
 #[derive(Deserialize, Debug)]
-struct LayerSpec {
+pub struct LayerSpec {
     #[serde(rename = "in")]
     in_features: usize,
     #[serde(rename = "out")]
@@ -18,7 +18,7 @@ struct LayerSpec {
 
 /// Network specification
 #[derive(Deserialize, Debug)]
-struct NetworkSpec {
+pub struct NetworkSpec {
     layers: Vec<LayerSpec>,
 }
 
@@ -32,7 +32,7 @@ pub struct Net<B: Backend> {
 
 impl<B: Backend> Net<B> {
     /// Build a model from JSON spec
-    fn from_spec(spec: NetworkSpec, device: &B::Device) -> Self {
+    pub fn from_spec(spec: NetworkSpec, device: &B::Device) -> Self {
         let mut linears = Vec::new();
         let mut batch_norms = Vec::new();
         let mut dropouts = Vec::new();
