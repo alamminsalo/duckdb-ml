@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 // XYValue holds input features -> targets data in X -> Y.
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct XYValue(pub Vec<f64>, pub Vec<f64>);
+pub struct XYValue(pub Vec<f32>, pub Vec<f32>);
 
 #[derive(Clone, Debug)]
 pub struct TensorBatch<B: Backend, const D: usize> {

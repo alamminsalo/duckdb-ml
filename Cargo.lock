@@ -1881,6 +1881,7 @@ name = "duckdb_nn"
 version = "0.1.0"
 dependencies = [
  "burn",
+ "csv",
  "duckdb",
  "duckdb-loadable-macros",
  "libduckdb-sys",
