@@ -20,7 +20,6 @@ struct LayerSpec {
 #[derive(Deserialize, Debug)]
 struct NetworkSpec {
     layers: Vec<LayerSpec>,
-    lossfn: String,
 }
 
 #[derive(Module, Debug)]
@@ -101,27 +100,67 @@ impl<B: Backend> Net<B> {
         }
         x
     }
-
-    //pub fn forward_reg(
-    //    &self,
-    //    features: Tensor<B, 2>,
-    //    targets: Tensor<B, 2>,
-    //) -> RegressionOutput<B> {
-    //    let pred = self.forward(features);
-
-    //    Regression
-    //}
 }
 
-//impl<B: AutodiffBackend> TrainStep<TensorBatch<B, 2>, RegressionOutput<B>> for Net<B> {
-//    fn step(&self, batch: TensorBatch<B, 2>) -> TrainOutput<RegressionOutput<B>> {
-//        let item = self.forward_reg(batch.features, batch.targets);
-//        TrainOutput::new(self, item.loss.backward(), item)
-//    }
-//}
-//
-//impl<B: Backend> ValidStep<TensorBatch<B, 2>, RegressionOutput<B>> for Net<B> {
-//    fn step(&self, batch: TensorBatch<B, 2>) -> RegressionOutput<B> {
-//        self.forward_reg(batch.features, batch.targets)
-//    }
-//}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use burn::backend::NdArray;
+
+    type B = NdArray<f32>;
+
+    #[test]
+    fn test_fcn_forward_pass() {
+        // Inline JSON spec
+        let json = r#"
+        {
+            "layers": [
+                { "in": 4, "out": 8, "activation": "relu", "batch_norm": true, "dropout": 0.1 },
+                { "in": 8, "out": 3, "activation": "tanh" }
+            ]
+        }
+        "#;
+
+        // Parse the JSON into NetworkSpec
+        let spec: NetworkSpec = serde_json::from_str(json).unwrap();
+
+        // Create device and build model
+        let device = Default::default();
+        let model = Net::<B>::from_spec(spec, &device);
+
+        // Example input: batch_size=2, features=4
+        let input =
+            Tensor::<B, 2>::from_floats([[0.5, -0.1, 0.3, 0.8], [1.0, 0.0, -0.2, 0.4]], &device);
+
+        // Forward pass
+        let output = model.forward(input);
+
+        // Check output shape
+        let data = output.to_data();
+        assert_eq!(data.shape[0], 2, "Batch size should be 2");
+        assert_eq!(data.shape[1], 3, "Output feature size should be 3");
+    }
+
+    #[test]
+    fn test_fcn_no_activation() {
+        // Simple network with no activations
+        let json = r#"
+        {
+            "layers": [
+                { "in": 3, "out": 3 }
+            ]
+        }
+        "#;
+
+        let spec: NetworkSpec = serde_json::from_str(json).unwrap();
+        let device = Default::default();
+        let model = Net::<B>::from_spec(spec, &device);
+
+        let input = Tensor::<B, 2>::from_floats([[1.0, 2.0, 3.0]], &device);
+        let output = model.forward(input);
+        let data = output.to_data();
+
+        assert_eq!(data.shape[0], 1, "Batch size should be 1");
+        assert_eq!(data.shape[1], 3, "Output feature size should be 3");
+    }
+}

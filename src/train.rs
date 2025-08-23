@@ -1,7 +1,6 @@
 use crate::batcher::{TensorBatch, TensorBatcher, XYValue};
 use crate::net::Net;
 use burn::data::dataloader::batcher::Batcher;
-use burn::data::dataloader::Dataset;
 use burn::nn::loss::{MseLoss, Reduction};
 use burn::optim::{GradientsParams, Optimizer};
 use burn::tensor::backend::AutodiffBackend;
@@ -12,7 +11,6 @@ use burn::{
         dataset::InMemDataset,
     },
     module::AutodiffModule,
-    tensor::backend::Backend,
 };
 use std::sync::Arc;
 
@@ -29,14 +27,8 @@ pub struct TrainingConfig {
     pub learning_rate: f64,
 }
 
-/// Create artifact directory
-fn create_artifact_dir(artifact_dir: &str) {
-    std::fs::remove_dir_all(artifact_dir).ok();
-    std::fs::create_dir_all(artifact_dir).ok();
-}
-
 /// Train an existing model with provided datasets
-pub fn train<B: AutodiffBackend>(
+pub fn train_reg<B: AutodiffBackend>(
     train_set: Vec<XYValue>,
     test_set: Vec<XYValue>,
     artifact_dir: &str,
@@ -44,9 +36,7 @@ pub fn train<B: AutodiffBackend>(
     config: TrainingConfig,
     device: B::Device,
     mut optimizer: impl Optimizer<Net<B>, B>,
-) {
-    create_artifact_dir(artifact_dir);
-
+) -> Net<B> {
     // Save config for reproducibility
     config
         .save(format!("{artifact_dir}/config.json"))
@@ -62,14 +52,15 @@ pub fn train<B: AutodiffBackend>(
             .shuffle(config.seed)
             .build(InMemDataset::new(train_set));
 
-    //let dataloader_test: Arc<dyn DataLoader<B, TensorBatch<B, 2>>> =
-    //DataLoaderBuilder::new(TensorBatcher).build(InMemDataset::new(test_set));
-
-    // Simply make a static test batch
+    // Simply make a static test batch of full test dataset
     let test_batch = {
         let tb = TensorBatcher;
         tb.batch(test_set, &device)
     };
+
+    // Use simple mse loss
+    // TODO: possibly parametrize other loss functions
+    let lossfn = MseLoss::new();
 
     // Implement our training loop.
     for epoch in 1..config.num_epochs + 1 {
@@ -77,7 +68,7 @@ pub fn train<B: AutodiffBackend>(
             let output = model.forward(batch.features);
 
             // Calculate loss
-            let loss = MseLoss::new().forward(output, batch.targets, Reduction::Auto);
+            let loss = lossfn.forward(output, batch.targets, Reduction::Mean);
 
             // Gradients for the current backward pass
             let grads = loss.backward();
@@ -92,15 +83,15 @@ pub fn train<B: AutodiffBackend>(
             let test_loss = {
                 let model_valid = model.valid();
 
-                MseLoss::new().forward(
+                lossfn.forward(
                     model_valid.forward(test_batch.features.clone()),
                     test_batch.targets.clone(),
-                    Reduction::Auto,
+                    Reduction::Mean,
                 )
             };
 
             println!(
-                "[Train - Epoch {} - Iteration {}] Loss Train {:.3} | Loss Test {:.3}",
+                "[Train: Epoch {} - Iteration {} | Loss: Train {:.3} - Test {:.3}]",
                 epoch,
                 iteration,
                 loss.into_scalar(),
@@ -108,4 +99,6 @@ pub fn train<B: AutodiffBackend>(
             );
         }
     }
+
+    model
 }
