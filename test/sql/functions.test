@@ -1,6 +1,10 @@
-load './build/debug/extension/ml/ml.duckdb_extension';
+require ml
 
+query I
 select ml_createmodel('foo', '{"layers": [{"in": 2, "out": 8, "activation": "relu"}, {"in": 8, "out": 1}]}');
+
+query I
 from ml_listmodels();
 
+query I
 select ml_trainmodel('foo', [0.,0.], [0.]);

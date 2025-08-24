@@ -99,13 +99,8 @@ impl VTab for ListModels {
     }
 }
 
-//struct TrainModelData {
-//    model: String,
-//    //features: Vec<Vec<f32>>,
-//    //targets: Vec<Vec<f32>>,
-//}
-
 struct TrainModel;
+
 impl VScalar for TrainModel {
     type State = ();
 
@@ -124,14 +119,8 @@ impl VScalar for TrainModel {
 
         let model = nn::get_model(&modelname)?;
 
-        let features = input.list_vector(1);
-        let targets = input.list_vector(2);
-
-        let features_size = features.len();
-        let targets_size = targets.len();
-
-        let features = duckdb_list_to_vec_f32(features, features_size, input.len());
-        let targets = duckdb_list_to_vec_f32(targets, targets_size, input.len());
+        let features = duckdb_list_to_vec_f32(input.list_vector(1), input.len());
+        let targets = duckdb_list_to_vec_f32(input.list_vector(2), input.len());
 
         println!("Train model={model} inputs={features:?} outputs={targets:?}");
 
@@ -153,6 +142,13 @@ impl VScalar for TrainModel {
         )]
     }
 }
+
+// struct TrainModelData {
+//     model: String,
+//     features: Vec<Vec<f32>>,
+//     targets: Vec<Vec<f32>>,
+// }
+//
 // impl VTab for TrainModel {
 //     type InitData = AtomicBool;
 //     type BindData = TrainModelData;
@@ -164,6 +160,8 @@ impl VScalar for TrainModel {
 //         bind.add_result_column("test loss", LogicalTypeHandle::from(LogicalTypeId::Float));
 //
 //         let model = bind.get_parameter(0).to_string();
+//         let features = duckdb_list_to_vec_f32(bind.get_parameter(1).try_into().unwrap()), 0);
+//
 //         //let features = bind.get_parameter(1);
 //         //let targets = bind.get_parameter(2);
 //
@@ -195,8 +193,8 @@ impl VScalar for TrainModel {
 //     fn parameters() -> Option<Vec<LogicalTypeHandle>> {
 //         Some(vec![
 //             LogicalTypeHandle::from(LogicalTypeId::Varchar),
-//             LogicalTypeHandle::from(LogicalTypeId::List),
-//             LogicalTypeHandle::from(LogicalTypeId::List),
+//             LogicalTypeHandle::list(&LogicalTypeHandle::from(LogicalTypeId::Float)),
+//             LogicalTypeHandle::list(&LogicalTypeHandle::from(LogicalTypeId::Float)),
 //         ])
 //     }
 // }

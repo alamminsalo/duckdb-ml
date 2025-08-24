@@ -10,13 +10,16 @@ pub fn duckdb_string_to_string(word: &duckdb_string_t) -> String {
     }
 }
 
-pub fn duckdb_list_to_vec_f32(list: ListVector, list_size: usize, rows: usize) -> Vec<Vec<f32>> {
-    list.child(list_size * rows)
+pub fn duckdb_list_to_vec_f32(list: ListVector, rows: usize) -> Vec<Vec<f32>> {
+    let array_size = list.len() / rows;
+    println!("array len {array_size}");
+
+    list.child(list.len())
         .as_slice()
         .iter()
         .copied()
         .collect::<Vec<f32>>()
-        .chunks(list_size)
+        .chunks(array_size)
         .map(|c| c.to_vec())
         .collect()
 }

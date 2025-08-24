@@ -1,0 +1,16 @@
+require ml
+
+query I
+select ml_createmodel('autompg', '{"layers": [{"in": 5, "out": 16, "activation": "relu"}, {"in": 16, "out": 1}]}');
+
+query II
+from ml_listmodels();
+----
+autompg
+{"layers": [{"in": 5, "out": 16, "activation": "relu"}, {"in": 16, "out": 1}]}
+
+query I
+create table autompg as from 'test/auto_mpg.csv';
+
+query I
+select ml_trainmodel('autompg', [cylinders::float, displacement::float, horsepower::float, weight::float, acceleration::float], [mpg::float]) from autompg;
