@@ -60,7 +60,11 @@ pub fn train_reg<B: AutodiffBackend>(
         let tb = TensorBatcher;
         (
             tb.batch(train_set.clone(), device),
-            tb.batch(test_set, device),
+            if test_set.len() > 0 {
+                Some(tb.batch(test_set, device))
+            } else {
+                None
+            },
         )
     };
 
@@ -103,18 +107,26 @@ pub fn train_reg<B: AutodiffBackend>(
             Reduction::Mean,
         );
 
-        let test_loss = lossfn.forward(
-            model_valid.forward(test_tensor.features.clone()),
-            test_tensor.targets.clone(),
-            Reduction::Mean,
-        );
+        if let Some(test_tensor) = test_tensor.as_ref() {
+            let test_loss = lossfn.forward(
+                model_valid.forward(test_tensor.features.clone()),
+                test_tensor.targets.clone(),
+                Reduction::Mean,
+            );
 
-        println!(
-            "[Train: Epoch={} LossTrain={:.3} LossTest={:.3}]",
-            epoch,
-            train_loss.into_scalar(),
-            test_loss.into_scalar(),
-        );
+            println!(
+                "[Train: Epoch={} LossTrain={:.3} LossTest={:.3}]",
+                epoch,
+                train_loss.into_scalar(),
+                test_loss.into_scalar(),
+            );
+        } else {
+            println!(
+                "[Train: Epoch={} LossTrain={:.3}]",
+                epoch,
+                train_loss.into_scalar(),
+            );
+        }
     }
 
     model

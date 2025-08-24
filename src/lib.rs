@@ -1,7 +1,8 @@
 mod nn;
+mod utils;
 
 use duckdb::core::LogicalTypeHandle;
-use duckdb::ffi::{duckdb_string_t, duckdb_string_t_data, duckdb_string_t_length};
+use duckdb::ffi::duckdb_string_t;
 use duckdb::vtab::{BindInfo, InitInfo, TableFunctionInfo, VTab};
 use duckdb::{
     core::{DataChunkHandle, Inserter, LogicalTypeId},
@@ -15,14 +16,7 @@ use std::error::Error;
 use std::ffi::CString;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-fn duckdb_string(word: &duckdb_string_t) -> String {
-    unsafe {
-        let len = duckdb_string_t_length(*word);
-        let c_ptr = duckdb_string_t_data(word as *const _ as *mut _);
-        let bytes = std::slice::from_raw_parts(c_ptr as *const u8, len as usize);
-        str::from_utf8(bytes).unwrap().to_owned()
-    }
-}
+use utils::{duckdb_list_to_vec_f32, duckdb_string_to_string};
 
 struct CreateModel;
 impl VScalar for CreateModel {
@@ -37,7 +31,7 @@ impl VScalar for CreateModel {
             .flat_vector(0)
             .as_slice_with_len::<duckdb_string_t>(input.len())
             .iter()
-            .map(duckdb_string)
+            .map(duckdb_string_to_string)
             .next()
             .unwrap();
 
@@ -45,7 +39,7 @@ impl VScalar for CreateModel {
             .flat_vector(1)
             .as_slice_with_len::<duckdb_string_t>(input.len())
             .iter()
-            .map(duckdb_string)
+            .map(duckdb_string_to_string)
             .next()
             .unwrap();
 
@@ -107,47 +101,105 @@ impl VTab for ListModels {
 
 //struct TrainModelData {
 //    model: String,
+//    //features: Vec<Vec<f32>>,
+//    //targets: Vec<Vec<f32>>,
 //}
+
+struct TrainModel;
+impl VScalar for TrainModel {
+    type State = ();
+
+    unsafe fn invoke(
+        _state: &(),
+        input: &mut DataChunkHandle,
+        output: &mut dyn WritableVector,
+    ) -> Result<(), Box<dyn Error>> {
+        let modelname: String = input
+            .flat_vector(0)
+            .as_slice_with_len::<duckdb_string_t>(input.len())
+            .iter()
+            .map(duckdb_string_to_string)
+            .next()
+            .unwrap();
+
+        let model = nn::get_model(&modelname)?;
+
+        let features = input.list_vector(1);
+        let targets = input.list_vector(2);
+
+        let features_size = features.len();
+        let targets_size = targets.len();
+
+        let features = duckdb_list_to_vec_f32(features, features_size, input.len());
+        let targets = duckdb_list_to_vec_f32(targets, targets_size, input.len());
+
+        println!("Train model={model} inputs={features:?} outputs={targets:?}");
+
+        let model = nn::train_model_reg(model, features, targets);
+
+        nn::put_model(&modelname, model)?;
+
+        Ok(())
+    }
+
+    fn signatures() -> Vec<ScalarFunctionSignature> {
+        vec![ScalarFunctionSignature::exact(
+            vec![
+                LogicalTypeId::Varchar.into(),
+                LogicalTypeHandle::list(&LogicalTypeHandle::from(LogicalTypeId::Float)),
+                LogicalTypeHandle::list(&LogicalTypeHandle::from(LogicalTypeId::Float)),
+            ],
+            LogicalTypeId::Varchar.into(),
+        )]
+    }
+}
+// impl VTab for TrainModel {
+//     type InitData = AtomicBool;
+//     type BindData = TrainModelData;
 //
-//struct TrainModel;
-//impl VTab for TrainModel {
-//    type InitData = AtomicBool;
-//    type BindData = ();
+//     fn bind(bind: &BindInfo) -> Result<Self::BindData, Box<dyn Error>> {
+//         bind.add_result_column("model", LogicalTypeHandle::from(LogicalTypeId::Varchar));
+//         bind.add_result_column("epoch", LogicalTypeHandle::from(LogicalTypeId::Varchar));
+//         bind.add_result_column("train loss", LogicalTypeHandle::from(LogicalTypeId::Float));
+//         bind.add_result_column("test loss", LogicalTypeHandle::from(LogicalTypeId::Float));
 //
-//    fn bind(bind: &BindInfo) -> Result<Self::BindData, Box<dyn Error>> {
-//        bind.add_result_column("model", LogicalTypeHandle::from(LogicalTypeId::Varchar));
-//        Ok(())
-//    }
+//         let model = bind.get_parameter(0).to_string();
+//         //let features = bind.get_parameter(1);
+//         //let targets = bind.get_parameter(2);
 //
-//    fn init(_: &InitInfo) -> Result<Self::InitData, Box<dyn Error>> {
-//        Ok(AtomicBool::new(false))
-//    }
+//         //println!("{features:?}, {targets:?}");
 //
-//    fn func(
-//        func: &TableFunctionInfo<Self>,
-//        output: &mut DataChunkHandle,
-//    ) -> Result<(), Box<dyn Error>> {
-//        if func.get_init_data().swap(true, Ordering::Relaxed) {
-//            output.set_len(0);
-//        } else {
-//            let models = nn::list_models()?;
-//            let vector = output.flat_vector(0);
+//         Ok(TrainModelData {
+//             model,
+//             //features,
+//             //targets,
+//         })
+//     }
 //
-//            for (idx, model) in models.iter().enumerate() {
-//                let result = CString::new(model.clone())?;
-//                vector.insert(idx, result);
-//            }
+//     fn init(_: &InitInfo) -> Result<Self::InitData, Box<dyn Error>> {
+//         Ok(AtomicBool::new(false))
+//     }
 //
-//            output.set_len(models.len());
-//        }
+//     fn func(
+//         func: &TableFunctionInfo<Self>,
+//         output: &mut DataChunkHandle,
+//     ) -> Result<(), Box<dyn Error>> {
+//         if func.get_init_data().swap(true, Ordering::Relaxed) {
+//             output.set_len(0);
+//             return Ok(());
+//         }
 //
-//        Ok(())
-//    }
+//         Ok(())
+//     }
 //
-//    fn parameters() -> Option<Vec<LogicalTypeHandle>> {
-//        Some(vec![])
-//    }
-//}
+//     fn parameters() -> Option<Vec<LogicalTypeHandle>> {
+//         Some(vec![
+//             LogicalTypeHandle::from(LogicalTypeId::Varchar),
+//             LogicalTypeHandle::from(LogicalTypeId::List),
+//             LogicalTypeHandle::from(LogicalTypeId::List),
+//         ])
+//     }
+// }
 
 #[duckdb_entrypoint_c_api]
 pub unsafe fn extension_entrypoint(con: Connection) -> std::result::Result<(), Box<dyn Error>> {
@@ -155,8 +207,8 @@ pub unsafe fn extension_entrypoint(con: Connection) -> std::result::Result<(), B
         .unwrap();
     con.register_table_function::<ListModels>("ML_ListModels")
         .unwrap();
-    //con.register_table_function::<TrainModel>("ML_TrainModel")
-    //    .unwrap();
+    con.register_scalar_function::<TrainModel>("ML_TrainModel")
+        .unwrap();
 
     Ok(())
 }
