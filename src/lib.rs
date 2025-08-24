@@ -24,8 +24,8 @@ fn duckdb_string(word: &duckdb_string_t) -> String {
     }
 }
 
-struct ModelCreate;
-impl VScalar for ModelCreate {
+struct CreateModel;
+impl VScalar for CreateModel {
     type State = ();
 
     unsafe fn invoke(
@@ -51,8 +51,8 @@ impl VScalar for ModelCreate {
 
         nn::register_model(&modelname, &spec)?;
 
-        //let output_vector = output.flat_vector();
-        //output_vector.insert(0, &format!("Created model {modelname}!")[..]);
+        let output_vector = output.flat_vector();
+        output_vector.insert(0, "Ok");
 
         Ok(())
     }
@@ -72,6 +72,7 @@ impl VTab for ListModels {
 
     fn bind(bind: &BindInfo) -> Result<Self::BindData, Box<dyn Error>> {
         bind.add_result_column("model", LogicalTypeHandle::from(LogicalTypeId::Varchar));
+        bind.add_result_column("json", LogicalTypeHandle::from(LogicalTypeId::Varchar));
         Ok(())
     }
 
@@ -85,16 +86,15 @@ impl VTab for ListModels {
     ) -> Result<(), Box<dyn Error>> {
         if func.get_init_data().swap(true, Ordering::Relaxed) {
             output.set_len(0);
-        } else {
-            let models = nn::list_models()?;
-            let vector = output.flat_vector(0);
+            return Ok(());
+        }
 
-            for (idx, model) in models.iter().enumerate() {
-                let result = CString::new(model.clone())?;
-                vector.insert(idx, result);
-            }
+        let models = nn::list_models()?;
+        output.set_len(models.len());
 
-            output.set_len(models.len());
+        for (idx, (model, json)) in models.into_iter().enumerate() {
+            output.flat_vector(0).insert(idx, CString::new(model)?);
+            output.flat_vector(1).insert(idx, CString::new(json)?);
         }
 
         Ok(())
@@ -105,12 +105,58 @@ impl VTab for ListModels {
     }
 }
 
+//struct TrainModelData {
+//    model: String,
+//}
+//
+//struct TrainModel;
+//impl VTab for TrainModel {
+//    type InitData = AtomicBool;
+//    type BindData = ();
+//
+//    fn bind(bind: &BindInfo) -> Result<Self::BindData, Box<dyn Error>> {
+//        bind.add_result_column("model", LogicalTypeHandle::from(LogicalTypeId::Varchar));
+//        Ok(())
+//    }
+//
+//    fn init(_: &InitInfo) -> Result<Self::InitData, Box<dyn Error>> {
+//        Ok(AtomicBool::new(false))
+//    }
+//
+//    fn func(
+//        func: &TableFunctionInfo<Self>,
+//        output: &mut DataChunkHandle,
+//    ) -> Result<(), Box<dyn Error>> {
+//        if func.get_init_data().swap(true, Ordering::Relaxed) {
+//            output.set_len(0);
+//        } else {
+//            let models = nn::list_models()?;
+//            let vector = output.flat_vector(0);
+//
+//            for (idx, model) in models.iter().enumerate() {
+//                let result = CString::new(model.clone())?;
+//                vector.insert(idx, result);
+//            }
+//
+//            output.set_len(models.len());
+//        }
+//
+//        Ok(())
+//    }
+//
+//    fn parameters() -> Option<Vec<LogicalTypeHandle>> {
+//        Some(vec![])
+//    }
+//}
+
 #[duckdb_entrypoint_c_api]
 pub unsafe fn extension_entrypoint(con: Connection) -> std::result::Result<(), Box<dyn Error>> {
-    con.register_scalar_function::<ModelCreate>("ML_CreateModel")
+    con.register_scalar_function::<CreateModel>("ML_CreateModel")
         .unwrap();
     con.register_table_function::<ListModels>("ML_ListModels")
         .unwrap();
+    //con.register_table_function::<TrainModel>("ML_TrainModel")
+    //    .unwrap();
 
     Ok(())
 }
