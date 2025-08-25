@@ -5,9 +5,12 @@ mod train;
 use batcher::XYValue;
 use burn::{
     backend::{Autodiff, NdArray},
+    module::AutodiffModule,
     optim::AdamConfig,
-    tensor::backend::AutodiffBackend,
-    //tensor::Device,
+    tensor::{
+        backend::{AutodiffBackend, Backend},
+        Tensor,
+    },
 };
 use model::*;
 use std::{
@@ -69,6 +72,24 @@ pub fn put_model(name: &str, model: Model<B>) -> Result<(), Box<dyn std::error::
     Ok(())
 }
 
+pub fn predict(
+    name: &str,
+    features: Vec<Vec<f32>>,
+) -> Result<Vec<Vec<f32>>, Box<dyn std::error::Error>> {
+    // Get model without trainable weights
+    let model = get_model(name)?.valid();
+
+    // Run inference
+    let pred = model.forward(make_tensor2d(&features));
+
+    // Collect into vec format
+    Ok(pred
+        .split(1, 0)
+        .into_iter()
+        .map(|t| t.to_data().into_vec().unwrap())
+        .collect())
+}
+
 pub fn train_model_reg<B: AutodiffBackend>(
     model: Model<B>,
     features: Vec<Vec<f32>>,
@@ -105,4 +126,15 @@ pub fn train_model_reg<B: AutodiffBackend>(
         "/tmp/__test_artifacts/test_train_autompg",
         &Default::default(),
     )
+}
+
+fn make_tensor2d<B: Backend>(input: &Vec<Vec<f32>>) -> Tensor<B, 2> {
+    let mut output: Vec<Tensor<B, 1>> = Vec::new();
+    let device = Default::default();
+
+    input.into_iter().for_each(|item| {
+        output.push(Tensor::<B, 1>::from_floats(item.as_slice(), &device));
+    });
+
+    Tensor::stack(output, 0)
 }

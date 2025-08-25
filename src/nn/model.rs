@@ -118,6 +118,22 @@ impl<B: Backend> Model<B> {
         }
         x
     }
+
+    pub fn input_dim(&self) -> usize {
+        if let Some(first_layer) = self.linears.iter().next() {
+            first_layer.weight.val().shape().num_dims()
+        } else {
+            0
+        }
+    }
+
+    pub fn output_dim(&self) -> usize {
+        if let Some(first_layer) = self.linears.iter().rev().next() {
+            first_layer.weight.val().shape().num_dims()
+        } else {
+            0
+        }
+    }
 }
 
 #[cfg(test)]
