@@ -128,9 +128,12 @@ impl VScalar for TrainModel {
             flatvec.insert(idx, "");
         }
 
-        let model = nn::train_model_reg(model, features, targets);
+        let model = nn::train_model_reg(model, features.clone(), targets);
 
         nn::put_model(&modelname, model)?;
+
+        let targets = nn::predict(&modelname, features)?;
+        write_vec_to_output(targets, output);
 
         Ok(())
     }
@@ -142,7 +145,7 @@ impl VScalar for TrainModel {
                 LogicalTypeHandle::list(&LogicalTypeHandle::from(LogicalTypeId::Float)),
                 LogicalTypeHandle::list(&LogicalTypeHandle::from(LogicalTypeId::Float)),
             ],
-            LogicalTypeId::Varchar.into(),
+            LogicalTypeHandle::list(&LogicalTypeHandle::from(LogicalTypeId::Float)),
         )]
     }
 }
@@ -165,12 +168,9 @@ impl VScalar for ModelPredict {
             .unwrap();
 
         let features = duckdb_list_to_vec_f32(input.list_vector(1), input.len());
-
         let targets = nn::predict(&modelname, features)?;
 
         write_vec_to_output(targets, output);
-
-        println!("{:?}", output.list_vector().len());
 
         Ok(())
     }
