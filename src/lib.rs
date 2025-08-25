@@ -121,7 +121,13 @@ impl VScalar for TrainModel {
         let features = duckdb_list_to_vec_f32(input.list_vector(1), input.len());
         let targets = duckdb_list_to_vec_f32(input.list_vector(2), input.len());
 
-        //println!("Train model={model} inputs={features:?} outputs={targets:?}");
+        let flatvec = output.flat_vector();
+
+        // Important! Write empty string to outputs to prevent crashes on scalar func calls
+        for (idx, _) in features.iter().enumerate() {
+            flatvec.insert(idx, "");
+        }
+
         let model = nn::train_model_reg(model, features, targets);
 
         nn::put_model(&modelname, model)?;

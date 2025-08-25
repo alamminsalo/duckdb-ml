@@ -32,7 +32,7 @@ pub fn write_vec_to_output(data: Vec<Vec<f32>>, output: &mut dyn WritableVector)
         offsets.push(values.len());
     }
 
-    let vec = &mut output.list_vector();
+    let mut vec = output.list_vector();
     vec.set_child(&values);
 
     for (idx, offset) in offsets.into_iter().enumerate() {
