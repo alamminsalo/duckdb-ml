@@ -9,4 +9,3 @@ This repository contains a Rust extension for the DuckDB database, adding machin
 | `ml_list` |  | Lists all registered models. |
 | `ml_train` | modelname: VARCHAR, features: LIST(FLOAT), targets: LIST(FLOAT) -> LIST(FLOAT) | Trains a machine learning model using the specified features and targets for the given model name. Returns predicted outputs after training the model. |
 | `ml_pred` | modelname: VARCHAR, features: LIST(FLOAT) -> LIST(FLOAT) | Predicts outcomes using the trained model with the specified name and input features. |
-```
