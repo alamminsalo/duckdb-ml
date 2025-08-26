@@ -15,7 +15,12 @@ CREATE OR REPLACE MACRO min_max_scaler(val, min_val, max_val) AS
 	(val - min_val) / nullif(max_val - min_val, 0)
 ;
 
-select ml_create('autompg', '{"layers": [{"in": 5, "out": 16, "activation": "relu"}, {"in": 16, "out": 1}]}');
+select ml_create('autompg', '
+{"layers": [
+    {"in": 5, "out": 64, "activation": "relu"},
+    {"in": 64, "out": 32, "activation": "relu"},
+    {"in": 32, "out": 1}
+]}');
 
 with
 params as (
