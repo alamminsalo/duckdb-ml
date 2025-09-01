@@ -39,3 +39,25 @@ pub fn write_vec_to_output(data: Vec<Vec<f32>>, output: &mut dyn WritableVector)
         vec.set_entry(idx, offset, value_len);
     }
 }
+
+use serde_json::Value;
+
+/// Merge `b` into `a`. Values in `b` override values in `a`.
+pub fn merge_json(a: &mut Value, b: &Value) {
+    match (a, b) {
+        (Value::Object(map_a), Value::Object(map_b)) => {
+            for (k, v_b) in map_b {
+                match map_a.get_mut(k) {
+                    Some(v_a) => merge_json(v_a, v_b),
+                    None => {
+                        map_a.insert(k.clone(), v_b.clone());
+                    }
+                }
+            }
+        }
+        // For all other cases, b overrides a
+        (a_slot, v_b) => {
+            *a_slot = v_b.clone();
+        }
+    }
+}

@@ -17,6 +17,7 @@ use std::{
     collections::HashMap,
     sync::{Mutex, OnceLock},
 };
+pub use train::TrainingConfig;
 
 type B = Autodiff<NdArray<f32>>;
 
@@ -94,6 +95,7 @@ pub fn train_model_reg<B: AutodiffBackend>(
     model: Model<B>,
     features: Vec<Vec<f32>>,
     targets: Vec<Vec<f32>>,
+    config: &TrainingConfig,
 ) -> Model<B> {
     assert_eq!(
         features.len(),
@@ -121,7 +123,7 @@ pub fn train_model_reg<B: AutodiffBackend>(
         model,
         train_xy,
         test_xy,
-        train::TrainingConfig::new(),
+        config,
         AdamConfig::new().init(),
         "/tmp/__test_artifacts/test_train_autompg",
         &Default::default(),

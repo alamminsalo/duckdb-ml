@@ -17,3 +17,6 @@ select ml_train('autompg', [cylinders::float, displacement::float, horsepower::f
 
 query I
 select ml_pred('autompg', [cylinders::float, displacement::float, horsepower::float, weight::float, acceleration::float]) from autompg;
+
+query I
+select ml_train('autompg', [cylinders::float, displacement::float, horsepower::float, weight::float, acceleration::float], [mpg::float], {epochs: 100, learning_rate: 0.0003, batch_size: 32, seed: 42}::json) from autompg;

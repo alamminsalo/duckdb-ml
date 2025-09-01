@@ -1,6 +1,8 @@
 mod nn;
 mod utils;
 
+use nn::TrainingConfig;
+
 use duckdb::core::LogicalTypeHandle;
 use duckdb::ffi::duckdb_string_t;
 use duckdb::vtab::{BindInfo, InitInfo, TableFunctionInfo, VTab};
@@ -110,7 +112,7 @@ impl VScalar for TrainModel {
     ) -> Result<(), Box<dyn Error>> {
         let modelname: String = input
             .flat_vector(0)
-            .as_slice_with_len::<duckdb_string_t>(input.len())
+            .as_slice_with_len::<duckdb_string_t>(1)
             .iter()
             .map(duckdb_string_to_string)
             .next()
@@ -121,6 +123,21 @@ impl VScalar for TrainModel {
         let features = duckdb_list_to_vec_f32(input.list_vector(1), input.len());
         let targets = duckdb_list_to_vec_f32(input.list_vector(2), input.len());
 
+        let mut training_config = TrainingConfig::new();
+
+        if input.num_columns() > 3 {
+            training_config = serde_json::from_str(
+                &input
+                    .flat_vector(3)
+                    .as_slice_with_len::<duckdb_string_t>(1)
+                    .iter()
+                    .map(duckdb_string_to_string)
+                    .next()
+                    .unwrap(),
+            )?;
+        }
+        println!("Training {modelname}: Hyperparameters {training_config:?}");
+
         let flatvec = output.flat_vector();
 
         // Important! Write empty string to outputs to prevent crashes on scalar func calls
@@ -128,7 +145,7 @@ impl VScalar for TrainModel {
             flatvec.insert(idx, "");
         }
 
-        let model = nn::train_model_reg(model, features.clone(), targets);
+        let model = nn::train_model_reg(model, features.clone(), targets, &training_config);
 
         nn::put_model(&modelname, model)?;
 
@@ -139,14 +156,30 @@ impl VScalar for TrainModel {
     }
 
     fn signatures() -> Vec<ScalarFunctionSignature> {
-        vec![ScalarFunctionSignature::exact(
-            vec![
-                LogicalTypeId::Varchar.into(),
+        vec![
+            ScalarFunctionSignature::exact(
+                vec![
+                    LogicalTypeId::Varchar.into(),
+                    LogicalTypeHandle::list(&LogicalTypeHandle::from(LogicalTypeId::Float)),
+                    LogicalTypeHandle::list(&LogicalTypeHandle::from(LogicalTypeId::Float)),
+                ],
                 LogicalTypeHandle::list(&LogicalTypeHandle::from(LogicalTypeId::Float)),
+            ),
+            ScalarFunctionSignature::exact(
+                vec![
+                    LogicalTypeId::Varchar.into(),
+                    LogicalTypeHandle::list(&LogicalTypeId::Float.into()),
+                    LogicalTypeHandle::list(&LogicalTypeId::Float.into()),
+                    LogicalTypeId::Varchar.into(),
+                    //LogicalTypeHandle::struct_type(&[
+                    //    ("epochs", LogicalTypeId::Integer.into()),
+                    //    ("batchsize", LogicalTypeId::Integer.into()),
+                    //    ("learningrate", LogicalTypeId::Float.into()),
+                    //]),
+                ],
                 LogicalTypeHandle::list(&LogicalTypeHandle::from(LogicalTypeId::Float)),
-            ],
-            LogicalTypeHandle::list(&LogicalTypeHandle::from(LogicalTypeId::Float)),
-        )]
+            ),
+        ]
     }
 }
 

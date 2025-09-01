@@ -17,7 +17,7 @@ use burn::{
 use std::sync::Arc;
 
 /// Training configuration
-#[derive(Config)]
+#[derive(Config, Debug)]
 pub struct TrainingConfig {
     #[config(default = 10)]
     pub epochs: usize,
@@ -40,7 +40,7 @@ pub fn train_reg<B: AutodiffBackend>(
     mut model: Model<B>,
     train_set: Vec<XYValue>,
     test_set: Vec<XYValue>,
-    config: TrainingConfig,
+    config: &TrainingConfig,
     mut optimizer: impl Optimizer<Model<B>, B>,
     artifact_dir: &str,
     device: &B::Device,
