@@ -3,11 +3,12 @@ use burn::{
     prelude::*,
     record::{FullPrecisionSettings, NamedMpkFileRecorder, Recorder},
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use std::error::Error;
 use std::path::PathBuf;
 
 /// One layer specification
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct LayerSpec {
     #[serde(rename = "in")]
     in_features: usize,
@@ -19,13 +20,15 @@ pub struct LayerSpec {
 }
 
 /// Modelwork specification
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct NetworkSpec {
     layers: Vec<LayerSpec>,
 }
 
 #[derive(Module, Debug)]
 pub struct Model<B: Backend> {
+    pub name: String,
+    pub specjson: String,
     linears: Vec<Linear<B>>,
     batch_norms: Vec<Option<BatchNorm<B, 0>>>,
     dropouts: Vec<Option<Dropout>>,
@@ -37,6 +40,8 @@ impl<B: Backend> Model<B> {
         self.clone()
             .save_file(path, &NamedMpkFileRecorder::<FullPrecisionSettings>::new())
             .expect("Should be able to save the model");
+
+        println!("Saved model to {path:?}.");
     }
 
     pub fn load_weights(self, path: &PathBuf, device: &B::Device) -> Self {
@@ -50,7 +55,14 @@ impl<B: Backend> Model<B> {
     }
 
     /// Build a model from JSON spec
-    pub fn from_spec(spec: NetworkSpec, device: &B::Device) -> Self {
+    pub fn from_spec(
+        name: &str,
+        specjson: &str,
+        device: &B::Device,
+    ) -> Result<Self, Box<dyn Error>> {
+        // Parse the JSON into NetworkSpec
+        let spec: NetworkSpec = serde_json::from_str(specjson)?;
+
         let mut linears = Vec::new();
         let mut batch_norms = Vec::new();
         let mut dropouts = Vec::new();
@@ -82,12 +94,14 @@ impl<B: Backend> Model<B> {
             activations.push(l.activation);
         }
 
-        Self {
+        Ok(Self {
+            name: name.to_string(),
+            specjson: specjson.to_string(),
             linears,
             batch_norms,
             dropouts,
             activations,
-        }
+        })
     }
 
     /// Forward pass

@@ -12,6 +12,7 @@ use burn::{
         Tensor,
     },
 };
+use chrono::{DateTime, Utc};
 use model::*;
 use std::{
     collections::HashMap,
@@ -21,35 +22,23 @@ pub use train::TrainingConfig;
 
 type B = Autodiff<NdArray<f32>>;
 
-//static DEVICE: OnceLock<Device<B>> = OnceLock::new();
 static MODEL_REGISTRY: OnceLock<Mutex<HashMap<String, model::Model<B>>>> = OnceLock::new();
-static MODEL_SPECS: OnceLock<Mutex<HashMap<String, String>>> = OnceLock::new();
 
 pub fn register_model(name: &str, spec_json: &str) -> Result<(), Box<dyn std::error::Error>> {
-    // Parse the JSON into NetworkSpec
-    let spec: NetworkSpec = serde_json::from_str(spec_json)?;
-
     //  Build model
-    //let device = DEVICE.get_or_init(|| Default::default());
-    let model = Model::<B>::from_spec(spec, &Default::default());
-
+    let model = Model::<B>::from_spec(name, spec_json, &Default::default())?;
     put_model(name, model)?;
-
-    let _ = MODEL_SPECS
-        .get_or_init(|| Mutex::new(HashMap::new()))
-        .lock()?
-        .insert(name.to_string(), spec_json.to_string());
 
     Ok(())
 }
 
 pub fn list_models() -> Result<Vec<(String, String)>, Box<dyn std::error::Error>> {
     let list = Vec::from_iter(
-        MODEL_SPECS
+        MODEL_REGISTRY
             .get_or_init(|| Mutex::new(HashMap::new()))
             .lock()?
             .iter()
-            .map(|(k, v)| (k.clone(), v.clone())),
+            .map(|(_, v)| (v.name.clone(), v.specjson.clone())),
     );
 
     Ok(list)
@@ -108,16 +97,23 @@ pub fn train_model_reg<B: AutodiffBackend>(
         .zip(targets)
         .map(|(x, y)| XYValue(x, y))
         .collect();
+    let mut test_xy = vec![];
 
     // Train-test split with static 30%
     // TODO: parametrize
     let split_frac = 0.3;
     let split_at = (train_xy.len() as f32 * split_frac) as usize;
-    let test_xy = if split_at > 0 {
-        train_xy.split_off(split_at)
-    } else {
-        vec![]
-    };
+    if split_at > 0 {
+        test_xy = train_xy.split_off(split_at);
+    }
+
+    // Add this line in your Rust code to include an ISO timestamp variable with the current time
+    let timestamp: DateTime<Utc> = Utc::now();
+    let artifact_path = format!(
+        "models/{}/{}",
+        &model.name,
+        timestamp.format("%Y%m%d_%H%M%S")
+    );
 
     train::train_reg(
         model,
@@ -125,7 +121,7 @@ pub fn train_model_reg<B: AutodiffBackend>(
         test_xy,
         config,
         AdamConfig::new().init(),
-        "/tmp/__test_artifacts/test_train_autompg",
+        &artifact_path,
         &Default::default(),
     )
 }

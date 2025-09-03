@@ -129,6 +129,8 @@ pub fn train_reg<B: AutodiffBackend>(
         }
     }
 
+    model.save_weights(&artifact_dir.into());
+
     model
 }
 
