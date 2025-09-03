@@ -24,11 +24,12 @@ type B = Autodiff<NdArray<f32>>;
 
 static MODEL_REGISTRY: OnceLock<Mutex<HashMap<String, model::Model<B>>>> = OnceLock::new();
 
-pub fn register_model(name: &str, spec_json: &str) -> Result<(), Box<dyn std::error::Error>> {
-    //  Build model
-    let model = Model::<B>::from_spec(name, spec_json, &Default::default())?;
-    put_model(name, model)?;
+pub fn build_model(name: &str, spec_json: &str) -> Result<Model<B>, Box<dyn std::error::Error>> {
+    Ok(Model::<B>::from_spec(name, spec_json, &Default::default())?)
+}
 
+pub fn register_model(model: Model<B>) -> Result<(), Box<dyn std::error::Error>> {
+    put_model(model)?;
     Ok(())
 }
 
@@ -53,11 +54,11 @@ pub fn get_model(name: &str) -> Result<Model<B>, Box<dyn std::error::Error>> {
         .clone())
 }
 
-pub fn put_model(name: &str, model: Model<B>) -> Result<(), Box<dyn std::error::Error>> {
-    let _ = MODEL_REGISTRY
+pub fn put_model(model: Model<B>) -> Result<(), Box<dyn std::error::Error>> {
+    MODEL_REGISTRY
         .get_or_init(|| Mutex::new(HashMap::new()))
         .lock()?
-        .insert(name.to_string(), model);
+        .insert(model.name.clone(), model);
 
     Ok(())
 }

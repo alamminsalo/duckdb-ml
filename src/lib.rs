@@ -45,7 +45,21 @@ impl VScalar for CreateModel {
             .next()
             .unwrap();
 
-        nn::register_model(&modelname, &spec)?;
+        let mut model = nn::build_model(&modelname, &spec)?;
+
+        if input.num_columns() > 3 {
+            let weights_path = input
+                .flat_vector(3)
+                .as_slice_with_len::<duckdb_string_t>(1)
+                .iter()
+                .map(duckdb_string_to_string)
+                .next()
+                .expect("Failed to initialize weights path");
+
+            model = model.load_weights(&weights_path.into())?;
+        }
+
+        nn::register_model(model)?;
 
         let output_vector = output.flat_vector();
         output_vector.insert(0, "Ok");
@@ -54,10 +68,20 @@ impl VScalar for CreateModel {
     }
 
     fn signatures() -> Vec<ScalarFunctionSignature> {
-        vec![ScalarFunctionSignature::exact(
-            vec![LogicalTypeId::Varchar.into(), LogicalTypeId::Varchar.into()],
-            LogicalTypeId::Varchar.into(),
-        )]
+        vec![
+            ScalarFunctionSignature::exact(
+                vec![LogicalTypeId::Varchar.into(), LogicalTypeId::Varchar.into()],
+                LogicalTypeId::Varchar.into(),
+            ),
+            ScalarFunctionSignature::exact(
+                vec![
+                    LogicalTypeId::Varchar.into(),
+                    LogicalTypeId::Varchar.into(),
+                    LogicalTypeId::Varchar.into(),
+                ],
+                LogicalTypeId::Varchar.into(),
+            ),
+        ]
     }
 }
 
@@ -136,7 +160,6 @@ impl VScalar for TrainModel {
                     .unwrap(),
             )?;
         }
-        println!("Training {modelname}: Hyperparameters {training_config:?}");
 
         let flatvec = output.flat_vector();
 
@@ -147,7 +170,7 @@ impl VScalar for TrainModel {
 
         let model = nn::train_model_reg(model, features.clone(), targets, &training_config);
 
-        nn::put_model(&modelname, model)?;
+        nn::put_model(model)?;
 
         let targets = nn::predict(&modelname, features)?;
         write_vec_to_output(targets, output);
@@ -171,11 +194,6 @@ impl VScalar for TrainModel {
                     LogicalTypeHandle::list(&LogicalTypeId::Float.into()),
                     LogicalTypeHandle::list(&LogicalTypeId::Float.into()),
                     LogicalTypeId::Varchar.into(),
-                    //LogicalTypeHandle::struct_type(&[
-                    //    ("epochs", LogicalTypeId::Integer.into()),
-                    //    ("batchsize", LogicalTypeId::Integer.into()),
-                    //    ("learningrate", LogicalTypeId::Float.into()),
-                    //]),
                 ],
                 LogicalTypeHandle::list(&LogicalTypeHandle::from(LogicalTypeId::Float)),
             ),

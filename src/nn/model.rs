@@ -44,14 +44,16 @@ impl<B: Backend> Model<B> {
         println!("Saved model to {path:?}.");
     }
 
-    pub fn load_weights(self, path: &PathBuf, device: &B::Device) -> Self {
+    pub fn load_weights(self, path: &PathBuf) -> Result<Self, Box<dyn Error>> {
         // Load model record on the backend's default device
         let record: ModelRecord<B> = NamedMpkFileRecorder::<FullPrecisionSettings>::new()
-            .load(path.clone(), device)
-            .expect("Should be able to load the model weights from the provided file");
+            .load(path.clone(), &Default::default())?;
+
+        let loaded = self.load_record(record);
+        println!("Loaded model weights from {path:?}.");
 
         // Initialize a new model with the loaded record/weights
-        self.load_record(record)
+        Ok(loaded)
     }
 
     /// Build a model from JSON spec
